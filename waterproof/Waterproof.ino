@@ -97,7 +97,6 @@ void loop()
 
   if (millis() - time0 > timeout)
   {
-    Serial.println(F("test"));
     menuOption = menu();
   }
 
