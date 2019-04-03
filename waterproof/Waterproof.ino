@@ -31,10 +31,10 @@ void setup()
 {
   // Setup Serial which is useful for debugging
   // Use the Serial Monitor to view printed messages
+  delay(10000);
   Serial.begin(115200);
   while (!Serial); // Wait for serial port to connect. Needed for native USB
   Serial.println("Waterproof Project");
-  menuOption = menu();
 }
 
 // Main logic of the circuit. It defines the interaction between the components. After setup, it runs over and over again, in an eternal loop.
@@ -97,6 +97,7 @@ void loop()
 
   if (millis() - time0 > timeout)
   {
+    Serial.println(F("test"));
     menuOption = menu();
   }
 
@@ -159,12 +160,15 @@ char menu()
     char c = Serial.read();
     if (isAlphaNumeric(c))
     {
-      if (c == '1')
+      if (c == '1') {
         Serial.println(F("Now testing DS18B20 1-Wire Temperature Sensor"));
-      if (c == '2')
+      }
+      else if (c == '2') {
         Serial.println(F("Now testing SEN0161 pH Sensor"));
-      if (c == '3')
+      }
+      else if (c == '3') {
         Serial.println(F("Now testing all the components"));
+      }
       else
       {
         Serial.println(F("illegal input!"));
