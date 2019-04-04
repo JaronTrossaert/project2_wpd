@@ -23,11 +23,13 @@ DS18B20 ds18b20wp(DS18B20WP_PIN_DQ);
 // Define vars for pH sensor
 int pHArray[ArrayLength]; // Store the average value of the pH sensor feedback
 int pHArrayIndex = 0;
+static float pHValue, voltage;
 
-// Define vars for testing menu
-const int timeout = 60000;  // Define timeout of 60 sec
-char menuOption = 0;
-long time0;
+// Define vars for temperature sensor
+float ds18b20wpTempC;
+
+// Define vars for simulated chlorine sensor
+double chlorineLevel = -1;
 
 const char* ssid = "ucll-projectweek-IoT";
 const char* password = "Foo4aiHa";
@@ -53,12 +55,13 @@ void callback(char* topic, byte* payload, unsigned int payloadLength);
 WiFiClient wifiClient;
 PubSubClient client(server, 1883, callback, wifiClient);
 
-int publishInterval = 5000; // 30 seconds
+int publishInterval = 10000; // 10 seconds
 long lastPublishMillis;
 
 void setup() {
   Serial.begin(115200);
   Serial.println();
+  randomSeed(analogRead(0));
 
   wifiConnect();
   mqttConnect();
@@ -66,6 +69,17 @@ void setup() {
 }
 
 void loop() {
+  static unsigned long samplingTime = millis();
+  ds18b20wpTempC = ds18b20wp.readTempC();
+  if (millis() - samplingTime > samplingInterval)
+  {
+    pHArray[pHArrayIndex++] = analogRead(SensorPin);
+    if (pHArrayIndex == ArrayLength) pHArrayIndex = 0;
+    voltage = averagearray(pHArray, ArrayLength) * 5.0 / 1024;
+    pHValue = 3.5 * voltage + Offset;
+    samplingTime = millis();
+  }
+
   if (millis() - lastPublishMillis > publishInterval) {
     publishData();
     lastPublishMillis = millis();
@@ -136,25 +150,20 @@ void initManagedDevice() {
 }
 
 void publishData() {
-  static unsigned long samplingTime = millis();
-  static float pHValue, voltage;
-  float ds18b20wpTempC = ds18b20wp.readTempC();
-  if (millis() - samplingTime > samplingInterval)
-  {
-    pHArray[pHArrayIndex++] = analogRead(SensorPin);
-    if (pHArrayIndex == ArrayLength) pHArrayIndex = 0;
-    voltage = averagearray(pHArray, ArrayLength) * 5.0 / 1024;
-    pHValue = 3.5 * voltage + Offset;
-    samplingTime = millis();
+  double chlorineLevelOld = chlorineLevel;
+  chlorineLevel = random(600.0) / 100.0;
+  if (chlorineLevelOld != -1) {
+    while (fabs(chlorineLevel - chlorineLevelOld) > 0.1) {
+      chlorineLevel = random(600.0) / 100.0;
+    }
   }
-
-  String payload = "{\"temp\": ";
+  String payload = "{\n\t\"temp\": ";
   payload += ds18b20wpTempC;
-  payload += ",\n\"ph\": ";
+  payload += ",\n\t\"ph\": ";
   payload += pHValue;
+  payload += ",\n\t\"chlorine\": ";
+  payload += chlorineLevel;
   payload += "\n}";
-  //  payload += millis() / 1000;
-  //  payload += "}}";
 
   Serial.print("Sending payload: "); Serial.println(payload);
 
